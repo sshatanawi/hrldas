@@ -1,0 +1,61 @@
+
+#=============================================================================================
+#  Options for Linux with Intel Fortran MPI
+#=============================================================================================
+
+ COMPILERF90    =       mpiifx
+ MPPFLAG        =       YES
+ FREESOURCE     =       -free
+ F90FLAGS       =       -convert big_endian -g -O0 -fpe0  # -traceback
+ MODFLAG        =       -I ../MPP
+ HYDRO_LIB      =       ../MPP/mpp_land.o ../MPP/CPL_WRF.o
+ #LDFLAGS        =
+ CPP            =       cpp
+ CPPFLAGS       =       -P -traditional -DMPP_LAND # -DSPATIAL_SOIL
+ #LIBS           =
+ LIBJASPER      =      -L/opt/apps/wrf/4.5.0/lib/grib2/lib -ljasper -ljpeg -lz
+ INCJASPER      =      -I/usr/include -I/opt/apps/wrf/4.5.0/lib/grib2/include/jasper -I/opt/apps/wrf/4.5.0/lib/grib2/include
+ NETCDFMOD      =      -I/opt/apps/netcdf/4.4.3_fortran/include
+ NETCDFLIB      =      -L/opt/apps/netcdf/4.4.0_c/lib -L/opt/apps/netcdf/4.4.3_fortran/lib -lnetcdf -lnetcdff
+ BZIP2          =       NO
+# BZIP2_INCLUDE  =       -I/usr/include
+# BZIP2_LIB      =       -L/usr/lib64 -lbz2
+ RM             =       rm -f
+ CC             =       cc
+
+#------------------------------------------------------------------------------ 
+# PETSc for SawSim
+#------------------------------------------------------------------------------
+
+#  The following variable must either be a path to petsc.pc or just "petsc" if petsc.pc
+#  has been installed to a system location or can be found in PKG_CONFIG_PATH.
+# PETSc config (export PETSC_DIR and PETSC_ARCH before building)
+petsc.pc := $(PETSC_DIR)/$(PETSC_ARCH)/lib/pkgconfig/petsc.pc
+# Additional libraries that support pkg-config can be added to the list of PACKAGES below.
+PACKAGES := $(petsc.pc)
+
+FC := $(shell pkg-config --variable=fcompiler $(PACKAGES))
+FFLAGS := $(shell pkg-config --variable=fflags_extra $(PACKAGES)) -cpp
+CPPFLAGS := $(shell pkg-config --cflags-only-I $(PACKAGES))
+LDFLAGS := $(shell pkg-config --libs-only-L --libs-only-other $(PACKAGES))
+#LDLIBS := $(shell pkg-config --libs-only-l $(PACKAGES)) -lm
+LIBS := $(shell pkg-config --libs-only-l $(PACKAGES)) -lm
+# Print PETSc build variables (optional debug)
+print:
+	@echo FC=$(FC)
+	@echo FFLAGS=$(FFLAGS)
+	@echo CPPFLAGS=$(CPPFLAGS)
+	@echo LDFLAGS=$(LDFLAGS)
+#	@echo LDLIBS=$(LDLIBS)
+	@echo LIBS=$(LIBS)
+
+
+# Calling libraries in some of subroutines should be in a form of #include <> at the beginning of the line
+#include <petsc/finclude/petsc.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#		use petsc
+#		use petscvec
+#		use petscsys
+#		use petscksp

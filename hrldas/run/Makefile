@@ -38,6 +38,7 @@ OBJS = \
         ../../noahmp/drivers/hrldas/NoahmpDriverMainMod.o \
         ../../noahmp/drivers/hrldas/NoahmpInitMainMod.o \
         ../../noahmp/drivers/hrldas/NoahmpGroundwaterInitMod.o \
+        ../../noahmp/drivers/hrldas/NoahmpGroundwaterSawSimInitMod.o \
         ../../noahmp/drivers/hrldas/NoahmpSnowInitMod.o \
         ../../noahmp/drivers/hrldas/NoahmpIOVarType.o \
         ../../noahmp/drivers/hrldas/NoahmpIOVarInitMod.o \
@@ -56,7 +57,6 @@ OBJS = \
         ../../noahmp/drivers/hrldas/PedoTransferSR2006Mod.o \
         ../../noahmp/utility/Machine.o \
         ../../noahmp/utility/CheckNanMod.o \
-        ../../noahmp/utility/PiecewiseLinearInterp1dMod.o \
         ../../noahmp/src/ConstantDefineMod.o \
         ../../noahmp/src/ConfigVarType.o \
         ../../noahmp/src/ForcingVarType.o \
@@ -121,15 +121,9 @@ OBJS = \
         ../../noahmp/src/NoahmpMainMod.o \
         ../../noahmp/src/CanopyRadiationTwoStreamMod.o \
         ../../noahmp/src/GroundAlbedoMod.o \
-        ../../noahmp/src/SnowAerosolSnicarMod.o \
         ../../noahmp/src/SnowAgingBatsMod.o \
-        ../../noahmp/src/SnowAgingSnicarMod.o \
         ../../noahmp/src/SnowAlbedoBatsMod.o \
         ../../noahmp/src/SnowAlbedoClassMod.o \
-        ../../noahmp/src/SnowAlbedoSnicarMod.o \
-        ../../noahmp/src/SnowFreshRadiusMod.o \
-        ../../noahmp/src/SnowInputSnicarMod.o \
-        ../../noahmp/src/SnowRadiationSnicarMod.o \
         ../../noahmp/src/SurfaceAlbedoMod.o \
         ../../noahmp/src/SurfaceRadiationMod.o \
         ../../noahmp/src/HumiditySaturationMod.o \
@@ -150,7 +144,6 @@ OBJS = \
         ../../noahmp/src/SoilWaterSupercoolKoren99Mod.o \
         ../../noahmp/src/SoilWaterSupercoolNiu06Mod.o \
         ../../noahmp/src/SnowCoverGroundNiu07Mod.o \
-        ../../noahmp/src/SnowCoverGroundAR25Mod.o \
         ../../noahmp/src/GroundRoughnessPropertyMod.o \
         ../../noahmp/src/SurfaceEmissivityMod.o \
         ../../noahmp/src/PsychrometricVariableMod.o \
@@ -168,6 +161,7 @@ OBJS = \
         ../../noahmp/src/BalanceErrorCheckMod.o \
         ../../noahmp/src/GeneralInitMod.o \
         ../../noahmp/src/GroundWaterMmfMod.o \
+        ../../noahmp/src/GroundWaterSawSimMod.o \
         ../../noahmp/src/BalanceErrorCheckGlacierMod.o \
         ../../noahmp/src/EnergyMainGlacierMod.o \
         ../../noahmp/src/GeneralInitGlacierMod.o \
@@ -190,22 +184,31 @@ OBJS = \
         ../../noahmp/src/SurfaceEmissivityGlacierMod.o \
         ../../noahmp/src/SurfaceEnergyFluxGlacierMod.o \
         ../../noahmp/src/SurfaceRadiationGlacierMod.o \
-        ../../noahmp/src/RunoffSurfaceWetlandMod.o \
-        ../../noahmp/src/WetlandWaterZhang22Mod.o \
-	../../noahmp/src/WaterMainGlacierMod.o
+        ../../noahmp/src/WaterMainGlacierMod.o
 
 CMD = hrldas.exe
 all:	$(CMD)
 
 ### default we create the exe based on NoahMP
 hrldas.exe: $(OBJS)
-	@echo ""
-	echo "${TAO_FORTRAN_LIB} ${TAO_LIB} ${PETSC_LIB} ${PHDF5_INC} -Wl,-rpath,${TACC_HDF5_LIB} -L${TACC_HDF5_LIB} -lhdf5 -lz"
-# We have to include the modules built in ../IO_code 
-	$(COMPILERF90) -o $(@) -I../IO_code -I../../urban/wrf -I../../noahmp/src -I../../noahmp/drivers/hrldas \
-        -I../../noahmp/utility -I../Utility_routines $(OBJS) $(OBJS_NoahMP) $(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO)
+# 	@echo ""
+# 	echo "${TAO_FORTRAN_LIB} ${TAO_LIB} ${PETSC_LIB} ${PHDF5_INC} -Wl,-rpath,${TACC_HDF5_LIB} -L${TACC_HDF5_LIB} -lhdf5 -lz"
+# # We have to include the modules built in ../IO_code 
+# 	$(COMPILERF90) -o $(@) -I../IO_code -I../../urban/wrf -I../../noahmp/src -I../../noahmp/drivers/hrldas \
+#         -I../../noahmp/utility -I../Utility_routines $(OBJS) $(OBJS_NoahMP) $(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO)
 
-	@echo ""
+# 	@echo ""
+	@echo "Linking hrldas.exe with PETSc + HDF5 + WRF..."
+	$(COMPILERF90) $(F90FLAGS) -o $(@) \
+	-I../IO_code \
+	-I../../urban/wrf \
+	-I../../noahmp/src \
+	-I../../noahmp/drivers/hrldas \
+	-I../../noahmp/utility \
+	-I../Utility_routines \
+	$(OBJS) $(OBJS_NoahMP) \
+	$(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO) \
+	$(LDFLAGS) $(LIBS)
 
 # Template to create the exe file based on different land model. Such as NoahMP
 NoahMP: $(OBJS)
