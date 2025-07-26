@@ -4,7 +4,10 @@
 .SUFFIXES: .o .F
 
 include ../user_build_options
-
+#######################PETSC######################## SawSim:CHECK
+# make sure PETSc‐guards get turned on everywhere
+CPPFLAGS += -DPETSC
+#########################################################
 OBJS_NoahMP = module_NoahMP_hrldas_driver.o
 
 OBJS = \

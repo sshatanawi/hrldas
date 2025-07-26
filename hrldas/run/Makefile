@@ -38,6 +38,7 @@ OBJS = \
         ../../noahmp/drivers/hrldas/NoahmpDriverMainMod.o \
         ../../noahmp/drivers/hrldas/NoahmpInitMainMod.o \
         ../../noahmp/drivers/hrldas/NoahmpGroundwaterInitMod.o \
+        ../../noahmp/drivers/hrldas/NoahmpGroundwaterSawSimInitMod.o \
         ../../noahmp/drivers/hrldas/NoahmpSnowInitMod.o \
         ../../noahmp/drivers/hrldas/NoahmpIOVarType.o \
         ../../noahmp/drivers/hrldas/NoahmpIOVarInitMod.o \
@@ -168,6 +169,7 @@ OBJS = \
         ../../noahmp/src/BalanceErrorCheckMod.o \
         ../../noahmp/src/GeneralInitMod.o \
         ../../noahmp/src/GroundWaterMmfMod.o \
+        ../../noahmp/src/GroundWaterSawSimMod.o \
         ../../noahmp/src/BalanceErrorCheckGlacierMod.o \
         ../../noahmp/src/EnergyMainGlacierMod.o \
         ../../noahmp/src/GeneralInitGlacierMod.o \
@@ -199,13 +201,24 @@ all:	$(CMD)
 
 ### default we create the exe based on NoahMP
 hrldas.exe: $(OBJS)
-	@echo ""
-	echo "${TAO_FORTRAN_LIB} ${TAO_LIB} ${PETSC_LIB} ${PHDF5_INC} -Wl,-rpath,${TACC_HDF5_LIB} -L${TACC_HDF5_LIB} -lhdf5 -lz"
-# We have to include the modules built in ../IO_code 
-	$(COMPILERF90) -o $(@) -I../IO_code -I../../urban/wrf -I../../noahmp/src -I../../noahmp/drivers/hrldas \
-        -I../../noahmp/utility -I../Utility_routines $(OBJS) $(OBJS_NoahMP) $(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO)
+# 	@echo ""
+# 	echo "${TAO_FORTRAN_LIB} ${TAO_LIB} ${PETSC_LIB} ${PHDF5_INC} -Wl,-rpath,${TACC_HDF5_LIB} -L${TACC_HDF5_LIB} -lhdf5 -lz"
+# # We have to include the modules built in ../IO_code 
+# 	$(COMPILERF90) -o $(@) -I../IO_code -I../../urban/wrf -I../../noahmp/src -I../../noahmp/drivers/hrldas \
+#         -I../../noahmp/utility -I../Utility_routines $(OBJS) $(OBJS_NoahMP) $(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO)
 
-	@echo ""
+# 	@echo ""
+	@echo "Linking hrldas.exe with PETSc + HDF5 + WRF..."
+	$(COMPILERF90) $(F90FLAGS) -o $(@) \
+	-I../IO_code \
+	-I../../urban/wrf \
+	-I../../noahmp/src \
+	-I../../noahmp/drivers/hrldas \
+	-I../../noahmp/utility \
+	-I../Utility_routines \
+	$(OBJS) $(OBJS_NoahMP) \
+	$(HYDRO_LIB) $(RAPID_LIB) $(NETCDFLIB) $(RAPID_MACRO) \
+	$(LDFLAGS) $(LIBS)
 
 # Template to create the exe file based on different land model. Such as NoahMP
 NoahMP: $(OBJS)

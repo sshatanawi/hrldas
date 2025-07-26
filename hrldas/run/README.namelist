@@ -164,6 +164,7 @@
 				                             !   6 -> Variable Infiltration Capacity Model surface runoff scheme (Wood et al., 1992, JGR) 
                       					     !   7 -> Xinanjiang Infiltration and surface runoff scheme ((Jayawardena and Zhou, 2000)
                       					     !   8 -> Dynamic VIC surface runoff scheme (Liang and Xie, 2001)
+                                             !   9 -> SawSim groundwater scheme, two layers dynamics: unconfined and confined 
 
  SUBSURFACE_RUNOFF_OPTION          = 3                       ! options for subsurface runoff   [default = 3]
                                                              ! currently only tested with setting the same option as surface runoff option
@@ -175,6 +176,7 @@
                                                              !   6 -> Variable Infiltration Capacity Model surface runoff scheme (Wood et al., 1992, JGR)
                                                              !   7 -> Xinanjiang Infiltration and surface runoff scheme ((Jayawardena and Zhou, 2000)
                                                              !   8 -> Dynamic VIC surface runoff scheme (Liang and Xie, 2001)
+                                                             !   9 -> SawSim groundwater scheme, two layers dynamics: unconfined and confined 
 
  DVIC_INFILTRATION_OPTION          = 1                       ! options for infiltration in dynamic VIC runoff scheme (only works when RUNOFF_OPTION=8, default=1)
                                                              ! **1 -> Philip scheme

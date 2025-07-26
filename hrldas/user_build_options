@@ -1,0 +1,65 @@
+#=============================================================================================
+#  Options for Linux with Intel Fortran MPI + PETSc
+#=============================================================================================
+
+COMPILERF90    =       mpiifx
+MPPFLAG        =       YES
+FREESOURCE     =       -free
+
+#---------------------------------------------------------------------------------------------
+#  Fortran flags: add PETSc include paths so the .mod files (Fortran headers) are found
+#---------------------------------------------------------------------------------------------
+PETSC_DIR      =       /opt/apps/petsc/3.15.0
+PETSC_ARCH     =       arch-linux2-c-opt
+PETSC_INC      =       -I$(PETSC_DIR)/include \
+                      -I$(PETSC_DIR)/$(PETSC_ARCH)/include
+
+F90FLAGS       =       -convert big_endian -g -O0 -fpe0 \
+                      $(PETSC_INC)
+
+#---------------------------------------------------------------------------------------------
+#  Module include flags (same as above)
+#---------------------------------------------------------------------------------------------
+MODFLAG        =       -I ../MPP \
+                      $(PETSC_INC)
+
+#---------------------------------------------------------------------------------------------
+#  C preprocessor flags (if you ever #include PETSc headers in .F files)
+#---------------------------------------------------------------------------------------------
+CPP            =       cpp
+CPPFLAGS       =       -P -traditional -DMPP_LAND \
+                      -I$(PETSC_DIR)/include
+
+#=============================================================================================
+#  Libraries: NetCDF, Jasper, and now PETSc
+#=============================================================================================
+LIBJASPER      =       -L/opt/apps/wrf/4.5.0/lib/grib2/lib -ljasper -ljpeg -lz
+INCJASPER      =       -I/usr/include \
+                      -I/opt/apps/wrf/4.5.0/lib/grib2/include/jasper \
+                      -I/opt/apps/wrf/4.5.0/lib/grib2/include
+
+NETCDFMOD      =       -I/opt/apps/netcdf/4.4.3_fortran/include
+NETCDFLIB      =       -L/opt/apps/netcdf/4.4.0_c/lib \
+                      -L/opt/apps/netcdf/4.4.3_fortran/lib \
+                      -lnetcdf -lnetcdff
+
+#---------------------------------------------------------------------------------------------
+#  PETSc linker flags
+#---------------------------------------------------------------------------------------------
+PETSC_LIBDIR   =       -L$(PETSC_DIR)/$(PETSC_ARCH)/lib
+PETSC_LIBS     =       -lpetsc
+
+#---------------------------------------------------------------------------------------------
+#  Aggregate into the make‐vars that actually get used
+#---------------------------------------------------------------------------------------------
+LDFLAGS        =       $(PETSC_LIBDIR)
+LIBS           =       $(NETCDFLIB) \
+                      $(LIBJASPER) \
+                      $(PETSC_LIBS)
+
+#---------------------------------------------------------------------------------------------
+#  Everything else
+#---------------------------------------------------------------------------------------------
+BZIP2          =       NO
+RM             =       rm -f
+CC             =       cc

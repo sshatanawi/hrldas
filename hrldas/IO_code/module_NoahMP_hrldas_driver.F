@@ -14,6 +14,8 @@ module module_NoahMP_hrldas_driver
   use module_sf_urban,          only : urban_param_init, urban_var_init
   use module_date_utilities
   use SnowInputSnicarMod,       only : SnowInputSnicar
+  use NoahmpGroundWaterSawSimInitMainMod
+  use GroundWaterSawSimMod
 
 #ifdef MPP_LAND
   use module_mpp_land, only: MPP_LAND_PAR_INI, mpp_land_init, getLocalXY, mpp_land_bcast_char
@@ -69,9 +71,17 @@ contains
     !local
     integer ::   xstart, xend, ystart, yend, ixfull, jxfull
     
+    !— PETSc initialization, one time only —
+    integer :: ierr
+#ifdef PETSC
+    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    if (ierr /= 0) stop 'PETSc initialization failed'
+#endif    
+
 #ifdef MPP_LAND
     call  MPP_LAND_INIT()
 #endif
+
 
 !---------------------------------------------------------------------
 !  read in input data from table and initial file
@@ -273,6 +283,23 @@ contains
     endif
 
 !------------------------------------------------------------------------
+! For IOPT_RUNSUB = 9 (SawSim groundwater), read in all of the extra fields
+! that SawSim needs: aquifer properties, Boundary conditions,pumping, river geometry & properties, etc.
+!------------------------------------------------------------------------
+   if (NoahmpIO%IOPT_RUNSUB == 9) then
+      call READ_SawSim_GW(                                           &
+         NoahmpIO%HRLDAS_SETUP_FILE,                                 & ! namelist/netcdf file
+         NoahmpIO%XSTART, NoahmpIO%XEND,                             &
+         NoahmpIO%YSTART, NoahmpIO%YEND,                             &
+         NoahmpIO%SY, NoahmpIO%SS,                                   &
+         NoahmpIO%BC_type, NoahmpIO%BC_value,                        &
+         NoahmpIO%pumping_rate, NoahmpIO%source_type                 &
+         NoahmpIO%L_RIVER, NoahmpIO%W_RIVER,                         & ! river length & width
+         NoahmpIO%RIVBED_BOT,NoahmpIO%H_RIVER                        & ! riverbed bottom elevation & river water table
+         )
+   endif
+
+!------------------------------------------------------------------------
 ! For IOPT_ALB = 3 (SNICAR), read in necessary fileds and parameters
 !------------------------------------------------------------------------
     if (NoahmpIO%IOPT_ALB == 3) then
@@ -452,6 +479,40 @@ contains
           call get_from_restart(xstart, xend, xstart, ixfull, jxfull, "RIVERBEDXY" ,NoahmpIO%RIVERBEDXY )
           call get_from_restart(xstart, xend, xstart, ixfull, jxfull, "EQZWT"      ,NoahmpIO%EQZWT      )
           call get_from_restart(xstart, xend, xstart, ixfull, jxfull, "PEXPXY"     ,NoahmpIO%PEXPXY     )
+       endif
+
+       ! below for SawSim groundwater scheme
+       if ( NoahmpIO%IOPT_RUNSUB == 9 ) then
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "SY"           , NoahmpIO%SY          )
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "SS"           , NoahmpIO%SS          )
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "C_RIVBED"           , NoahmpIO%C_RIVBED          )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "BC_type"      , NoahmpIO%BC_type     )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "BC_value"     , NoahmpIO%BC_value    )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "pumping_rate"    , NoahmpIO%pumping_rate)
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "source_type"  , NoahmpIO%source_type)
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "L_RIVER"      , NoahmpIO%L_RIVER    )
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "W_RIVER"      , NoahmpIO%W_RIVER    )
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "RIVBED_BOT"   , NoahmpIO%RIVBED_BOT )
+          call get_from_restart(xstart,xend,xstart,ixfull,jxfull, "H_RIVER"      , NoahmpIO%H_RIVER    )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "H_initial"    , NoahmpIO%H_initial  )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "GWTOP"        , NoahmpIO%GWTOP      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "GWBOT"        , NoahmpIO%GWBOT      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "DELTAV"        , NoahmpIO%DELTAV      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "P_RIVER"        , NoahmpIO%P_RIVER      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "B_RIVER"        , NoahmpIO%B_RIVER      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "CC"        , NoahmpIO%CC      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "CR"        , NoahmpIO%CR      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "CV"        , NoahmpIO%CV      )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "recharge_flux"        , NoahmpIO%recharge_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "pumping_flux"        , NoahmpIO%pumping_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "river_flux"        , NoahmpIO%river_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "lat_xri_flux"        , NoahmpIO%lat_xri_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "lat_ycj_flux"        , NoahmpIO%lat_ycj_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "vertical_flux"        , NoahmpIO%vertical_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "dStorage"        , NoahmpIO%dStorage   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "Net_flux"        , NoahmpIO%Net_flux   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "HOLD"        , NoahmpIO%HOLD   )
+          call get_from_restart_3d_mpp(xstart,xend,xstart,ixfull,jxfull, "HNEW"        , NoahmpIO%HNEW   )
        endif
 
        ! for wetland scheme
@@ -687,6 +748,14 @@ contains
        if ( NoahmpIO%IOPT_RUNSUB == 5 ) then
           call NoahmpGroundwaterInitMain(grid, NoahmpIO)
        endif
+
+       !----------------------------------------------------------------------------------
+       !   Initialize SawSim Groundwater variables
+       !----------------------------------------------------------------------------------
+       if ( NoahmpIO%IOPT_RUNSUB == 9 ) then
+          call NoahmpGroundwaterSawSimInitMain(grid, NoahmpIO)
+       endif
+
 
        if (NoahmpIO%SF_URBAN_PHYSICS > 0 ) then  !urban
 
@@ -1125,6 +1194,32 @@ contains
             endif ! MMF timestep
          endif ! MMF groundwater
 
+         ! SawSim, 
+
+         if ( NoahmpIO%IOPT_RUNSUB == 9 ) then
+            if ( mod(ITIME,NoahmpIO%STEPWTD) == 0 ) then
+               call wrf_message('calling SawSim')
+               call Groundwater_SawSim_solver( &
+                           NoahmpIO, NoahmpIO%NSOIL,NoahmpIO%XLAND, NoahmpIO%XICE,                                 & 
+                           NoahmpIO%XICE_THRESHOLD,NoahmpIO%ISICE,    NoahmpIO%ISLTYP,                             & 
+                           NoahmpIO%SMOISEQ, NoahmpIO%DZS, NoahmpIO%WTDDT,NoahmpIO%FDEPTHXY,                       & 
+                           NoahmpIO%AREAXY, NoahmpIO%TERRAIN,  NoahmpIO%ISURBAN, NoahmpIO%IVGTYP,                  & 
+                           NoahmpIO%EQZWT, NoahmpIO%PEXPXY,NoahmpIO%DX, NoahmpIO%DY,NoahmpIO%SY,NoahmpIO%SS,                       &
+                           NoahmpIO%recharge_flux,NoahmpIO%BC_type,       & 
+                           NoahmpIO%BC_value,NoahmpIO%source_type, NoahmpIO%H_initial,NoahmpIO%recharge_rate,      &
+                           NoahmpIO%pumping_rate,NoahmpIO%K_RIVERBED, NoahmpIO%RIVBED_BOT,   &
+                           NoahmpIO%C_RIVBED, NoahmpIO%W_RIVER, NoahmpIO%L_RIVER,NoahmpIO%H_RIVER,NoahmpIO%DELTAV, &
+                           NoahmpIO%HNEW,NoahmpIO%HOLD,NoahmpIO%GWTOP,NoahmpIO%GWBOT,NoahmpIO%CC, NoahmpIO%CR,     &
+                           NoahmpIO%CV,NoahmpIO%B_RIVER,NoahmpIO%P_RIVER,NoahmpIO%Net_flux,NoahmpIO%pumping_flux,  &
+                           NoahmpIO%river_flux,NoahmpIO%lat_xri_flux,NoahmpIO%lat_ycj_flux,NoahmpIO%vertical_flux, &
+                           NoahmpIO%dStorage,NoahmpIO%ids, NoahmpIO%ide,NoahmpIO%jds, NoahmpIO%jde,                &
+                           NoahmpIO%kds, NoahmpIO%kde, NoahmpIO%ims, NoahmpIO%ime, NoahmpIO%jms, NoahmpIO%jme,     &
+                           NoahmpIO%kms, NoahmpIO%kme, NoahmpIO%its, NoahmpIO%ite, NoahmpIO%jts, NoahmpIO%jte,     &
+                           NoahmpIO%kts, NoahmpIO%kte )
+            endif ! SawSim
+            
+         endif ! SawSim
+
 !------------------------------------------------------------------------
 ! END of surface_driver consistent code
 !------------------------------------------------------------------------
@@ -1360,6 +1455,20 @@ contains
               call add_to_output(NoahmpIO%QSLATXY    , "QSLAT"    , "accumulated lateral flow"                                     , "mm"     )
               call add_to_output(NoahmpIO%QLATXY     , "QLAT"     , "instantaneous lateral flow"                                   , "m"      )
             endif
+            
+            ! SawSim groundwater  model
+            if ( NoahmpIO%IOPT_RUNSUB == 9 ) then
+              call add_to_output(NoahmpIO%HNEW   , "HNEW"   , "Groundwater peziomertic head"                                        , "m"      )
+              call add_to_output(NoahmpIO%river_flux     , "river_flux"     , "river_GW flux interaction"                           , "m"      )
+              call add_to_output(NoahmpIO%recharge_flux , "recharge_flux" , "recharge to or from the water table when deep"         , "m"      )
+              call add_to_output(NoahmpIO%pumping_flux     , "pumping_flux"   , "groundwater extraction flux"                       , "m"      )
+              call add_to_output(NoahmpIO%lat_xri_flux      , "lat_xri_flux"      , "groundwater lateral flux in the x direction"   , "m"      )
+              call add_to_output(NoahmpIO%lat_ycj_flux , "lat_ycj" , "groundwater lateral flux in the y direction"                  , "m"      )
+              call add_to_output(NoahmpIO%vertical_flux,"vertical_flux", "groundwater interaction flux between unconfined and confined aquifers", "m"      )
+              call add_to_output(NoahmpIO%dStorage    , "dStorage"    , "groundwater stirage change"                                 , "m"     )
+              call add_to_output(NoahmpIO%Net_flux     , "Net_flux"     , "groundwater net flux at each grid cell"                   , "m"      )
+            endif
+
             ! Wetland model
             if ( NoahmpIO%IOPT_WETLAND > 0 ) then
               call add_to_output(NoahmpIO%FSATXY     , "FSAT"    , "saturated fraction of the grid"                           , "-" )
@@ -1431,6 +1540,13 @@ contains
                             NoahmpIO%SH2O(:,1:NoahmpIO%NSOIL,:),NoahmpIO%infxsrt,                     &
                             NoahmpIO%sfcheadrt,NoahmpIO%soldrain,NoahmpIO%qtiledrain,                 &
                             NoahmpIO%ZWATBLE2D,NoahmpIO%ix,NoahmpIO%jx,NoahmpIO%NSOIL) 
+#endif
+
+#ifdef PETSC
+ ! only finalize on last timestep 
+  if ( itime .eq. NoahmpIO%NTIME ) then
+    call PetscFinalize(ierr)
+  end if
 #endif
 
 end subroutine land_driver_exe
@@ -1556,6 +1672,40 @@ subroutine lsm_restart()
      call add_to_restart(NoahmpIO%EQZWT       , "EQZWT"      )
      call add_to_restart(NoahmpIO%PEXPXY      , "PEXPXY"     )
   endif
+
+  !––– below for SawSim groundwater scheme –––
+   if ( NoahmpIO%IOPT_RUNSUB == 9 ) then
+      call add_to_restart(NoahmpIO%SY                 , "SY"         )
+      call add_to_restart(NoahmpIO%SS                 , "SS"         )
+      call add_to_restart(NoahmpIO%BC_type            , "BC_type"       , layers="GW")
+      call add_to_restart(NoahmpIO%BC_value           , "BC_value"      , layers="GW")
+      call add_to_restart(NoahmpIO%source_type        , "source_type"   , layers="GW")
+      call add_to_restart(NoahmpIO%pumping_rate       , "pumping_rate"  , layers="GW")
+      call add_to_restart(NoahmpIO%L_RIVER            , "L_RIVER"    )
+      call add_to_restart(NoahmpIO%W_RIVER            , "W_RIVER"    )
+      call add_to_restart(NoahmpIO%W_RIVER            , "H_RIVER"    )
+      call add_to_restart(NoahmpIO%RIVBED_BOT         , "RIVBED_BOT" )
+      call add_to_restart(NoahmpIO%H_initial          , "H_initial"     , layers="GW")
+      call add_to_restart(NoahmpIO%HOLD               , "HOLD"          , layers="GW")
+      call add_to_restart(NoahmpIO%HNEW               , "HNEW"          , layers="GW")
+      call add_to_restart(NoahmpIO%GWTOP              , "GWTOP"         , layers="GW")
+      call add_to_restart(NoahmpIO%GWBOT              , "GWBOT"         , layers="GW")
+      call add_to_restart(NoahmpIO%CC                 , "CC"            , layers="GW")
+      call add_to_restart(NoahmpIO%CR                 , "CR"            , layers="GW")
+      call add_to_restart(NoahmpIO%CV                 , "CV"            , layers="GW")
+      call add_to_restart(NoahmpIO%C_RIVBED           , "C_RIVBED"   )
+      call add_to_restart(NoahmpIO%B_RIVER            , "B_RIVER"        , layers="GW")
+      call add_to_restart(NoahmpIO%P_RIVER            , "P_RIVER"        , layers="GW")
+      call add_to_restart(NoahmpIO%recharge_rate      , "recharge_rate"  , layers="GW")
+      call add_to_restart(NoahmpIO%recharge_flux      , "recharge_flux"  , layers="GW")
+      call add_to_restart(NoahmpIO%pumping_flux       , "pumping_flux"   , layers="GW")
+      call add_to_restart(NoahmpIO%river_flux         , "river_flux"     , layers="GW")
+      call add_to_restart(NoahmpIO%lat_xri_flux       , "lat_xri_flux "  , layers="GW")
+      call add_to_restart(NoahmpIO%lat_ycj_flux       , "lat_ycj_flux"   , layers="GW")
+      call add_to_restart(NoahmpIO%vertical_flux      , "vertical_flux"  , layers="GW")
+      call add_to_restart(NoahmpIO%dStorage           , "dStorage"       , layers="GW")
+      call add_to_restart(NoahmpIO%Net_flux           , "Net_flux"       , layers="GW")
+   end if
 
   ! for wetland scheme
   if ( NoahmpIO%IOPT_WETLAND > 0 ) then

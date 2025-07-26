@@ -585,6 +585,95 @@ contains
 
   end subroutine read_mmf_runoff
 
+    !---------------------------------------------------------------------------------------------------------
+ ! SawSim
+  subroutine READ_SawSim_GW( wrfinput_flnm,                           &
+                           xstart, xend, ystart, yend,                &
+                           BC_type, BC_value, source_type,            &
+                           pumping_rate, SY, SS,                      &
+                           W_RIVER, L_RIVER, H_RIVER, RIVBED_BOT )
+
+  implicit none
+
+  character(len=*), intent(in)  :: wrfinput_flnm
+  integer,          intent(in)  :: xstart, xend, ystart, yend
+
+  !--- your 3D outputs: (x, layer, y)
+  real, dimension(xstart:xend, NLAY_GW, ystart:yend), intent(out) :: &
+       BC_type, BC_value, source_type, pumping_rate
+
+  !--- your 2D outputs: (x, y)
+  real, dimension(xstart:xend, ystart:yend), intent(out) :: &
+       W_RIVER, L_RIVER, H_RIVER, RIVBED_BOT, SY, SS
+
+  integer :: ncid, varid, ierr, k
+  character(len=256) :: units
+  real, allocatable, dimension(:,:,:) :: tmp3d
+  integer :: nx, ny
+
+  nx = xend - xstart + 1
+  ny = yend - ystart + 1
+
+  ! Allocate a (x,y,layer) buffer
+  allocate( tmp3d(xstart:xend, ystart:yend, NLAY_GW), stat=ierr )
+  if (ierr /= 0) stop "READ_SawSim_GW:  Unable to allocate tmp3d"
+
+  ! Open the NetCDF file
+  ierr = nf90_open(trim(wrfinput_flnm), NF90_NOWRITE, ncid)
+  if (ierr /= NF90_NOERR) then
+    write(*,'("READ_SawSim_GW: Problem opening file: ",A)') trim(wrfinput_flnm)
+    stop
+  endif
+
+  !--- read each 3D field into tmp3d(x,y,layer)
+  call nf90_inq_varid(ncid, "BC_TYPE",    varid)
+  call nf90_get_var( ncid, varid, tmp3d, &
+       start=(/ xstart,    ystart,    1      /), &
+       count=(/ nx,         ny,         NLAY_GW /) )
+  do k = 1, NLAY_GW
+    BC_type(:,k,:) = tmp3d(:,:,k)
+  end do
+
+  call nf90_inq_varid(ncid, "BC_VALUE",   varid)
+  call nf90_get_var( ncid, varid, tmp3d, &
+       start=(/ xstart,    ystart,    1      /), &
+       count=(/ nx,         ny,         NLAY_GW /) )
+  do k = 1, NLAY_GW
+    BC_value(:,k,:) = tmp3d(:,:,k)
+  end do
+
+  call nf90_inq_varid(ncid, "SOURCE_TYPE",varid)
+  call nf90_get_var( ncid, varid, tmp3d, &
+       start=(/ xstart,    ystart,    1      /), &
+       count=(/ nx,         ny,         NLAY_GW /) )
+  do k = 1, NLAY_GW
+    source_type(:,k,:) = tmp3d(:,:,k)
+  end do
+
+  call nf90_inq_varid(ncid, "PUMP_RATE",  varid)
+  call nf90_get_var( ncid, varid, tmp3d, &
+       start=(/ xstart,    ystart,    1      /), &
+       count=(/ nx,         ny,         NLAY_GW /) )
+  do k = 1, NLAY_GW
+    pumping_rate(:,k,:) = tmp3d(:,:,k)
+  end do
+
+  deallocate(tmp3d)
+
+  !--- read the 2D fields using our helper subroutine
+  call get_2d_netcdf("W_RIVER"   , ncid, W_RIVER   , units, xstart, xend, ystart, yend, FATAL, ierr)
+  call get_2d_netcdf("L_RIVER"   , ncid, L_RIVER   , units, xstart, xend, ystart, yend, FATAL, ierr)
+  call get_2d_netcdf("H_RIVER"   , ncid, H_RIVER   , units, xstart, xend, ystart, yend, FATAL, ierr)
+  call get_2d_netcdf("RIVBED_BOT", ncid, RIVBED_BOT, units, xstart, xend, ystart, yend, FATAL, ierr)
+  call get_2d_netcdf("SY"        , ncid, SY        , units, xstart, xend, ystart, yend, FATAL, ierr)
+  call get_2d_netcdf("SS"        , ncid, SS        , units, xstart, xend, ystart, yend, FATAL, ierr)
+
+  ! Close
+  ierr = nf90_close(ncid)
+  if (ierr /= NF90_NOERR) stop "READ_SawSim_GW: Problem closing file"
+
+  end subroutine READ_SawSim_GW
+
 !---------------------------------------------------------------------------------------------------------
 
   subroutine read_agriculture_data(agdata_flnm,                            &
